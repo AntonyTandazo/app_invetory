@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { autoUpdater } = require('electron-updater');
 
 // Infrastructure
 const googleAuth = require('../infrastructure/google/GoogleAuthAdapter');
@@ -116,6 +117,43 @@ app.whenReady().then(async () => {
         else mainWindow?.maximize();
     });
     ipcMain.on('window:close', () => mainWindow?.close());
+
+    // ── AUTO-UPDATER SETUP ──
+    autoUpdater.setFeedURL({
+        provider: 'github',
+        owner: 'AntonyTandazo',
+        repo: 'app_invetory',
+        private: true,
+        token: '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'
+    });
+    autoUpdater.autoDownload = false;
+    autoUpdater.autoInstallOnAppQuit = true;
+
+    const sendUpdateStatus = (status, data = {}) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('updater:status', { status, ...data });
+        }
+    };
+
+    autoUpdater.on('checking-for-update', () => sendUpdateStatus('checking'));
+    autoUpdater.on('update-available', (info) => sendUpdateStatus('available', { version: info.version }));
+    autoUpdater.on('update-not-available', () => sendUpdateStatus('up-to-date'));
+    autoUpdater.on('download-progress', (prog) => sendUpdateStatus('downloading', { percent: Math.round(prog.percent) }));
+    autoUpdater.on('update-downloaded', (info) => sendUpdateStatus('downloaded', { version: info.version }));
+    autoUpdater.on('error', (err) => sendUpdateStatus('error', { message: err?.message || 'Error desconocido' }));
+
+    ipcMain.handle('update:check', async () => {
+        try { await autoUpdater.checkForUpdates(); return { ok: true }; }
+        catch (e) { return { ok: false, error: e.message }; }
+    });
+    ipcMain.handle('update:download', async () => {
+        try { await autoUpdater.downloadUpdate(); return { ok: true }; }
+        catch (e) { return { ok: false, error: e.message }; }
+    });
+    ipcMain.handle('update:install', () => {
+        autoUpdater.quitAndInstall(false, true);
+    });
+    ipcMain.handle('update:getVersion', () => app.getVersion());
 
     // ── 2. LOAD PERSISTED CREDENTIALS ──
     const credPath = path.join(app.getPath('userData'), 'credentials.json');

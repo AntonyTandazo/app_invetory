@@ -43,6 +43,12 @@
     "directories": {
       "output": "dist"
     },
+    "publish": {
+      "provider": "github",
+      "owner": "AntonyTandazo",
+      "repo": "app_invetory",
+      "private": true
+    },
     "win": {
       "target": "nsis",
       "icon": "IconoInventory.ico"

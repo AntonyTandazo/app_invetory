@@ -69,5 +69,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
         getTopProducts: (period) => ipcRenderer.invoke('reports:getTopProducts', period),
         getTopClients: (period) => ipcRenderer.invoke('reports:getTopClients', period),
         getTopCategories: (period) => ipcRenderer.invoke('reports:getTopCategories', period),
+    },
+
+    // Auto-updater
+    updater: {
+        check: () => ipcRenderer.invoke('update:check'),
+        download: () => ipcRenderer.invoke('update:download'),
+        install: () => ipcRenderer.invoke('update:install'),
+        getVersion: () => ipcRenderer.invoke('update:getVersion'),
+        onStatus: (callback) => {
+            ipcRenderer.on('updater:status', (_event, data) => callback(data));
+        }
     }
 });

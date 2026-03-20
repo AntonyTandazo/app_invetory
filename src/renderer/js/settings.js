@@ -6,6 +6,7 @@ const Settings = {
     const page = document.getElementById('page-settings');
     const spreadsheetId = await API.auth.getSpreadsheetId() || '—';
     const iva = Settings.getIva();
+    const appVersion = await API.updater.getVersion().catch(() => '1.0.0');
 
     page.innerHTML = `
       <div class="page-header">
@@ -58,17 +59,34 @@ const Settings = {
           </div>
         </div>
 
+        <!-- Auto-update -->
+        <div class="table-card" style="margin-bottom:0">
+          <div class="table-header"><span class="table-title">🔄 Actualizaciones</span></div>
+          <div style="padding:var(--sp-5)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-4)">
+              <div>
+                <p style="margin-bottom:var(--sp-1)"><strong>Versión actual:</strong> v${appVersion}</p>
+                <p style="font-size:var(--fs-sm);color:var(--color-text-muted)">Busca actualizaciones del sistema desde GitHub.</p>
+              </div>
+            </div>
+            <div id="update-status" style="margin-bottom:var(--sp-3)"></div>
+            <button class="btn btn-primary" id="btn-check-update" onclick="Settings.checkForUpdates()">🔍 Buscar actualizaciones</button>
+          </div>
+        </div>
+
         <!-- About -->
         <div class="table-card" style="margin-bottom:0">
           <div class="table-header"><span class="table-title">ℹ️ Acerca del Sistema</span></div>
           <div style="padding:var(--sp-5)">
-            <p style="margin-bottom:var(--sp-2)"><strong>Sistema de Inventario</strong> v1.0.0</p>
+            <p style="margin-bottom:var(--sp-2)"><strong>Sistema de Inventario</strong> v${appVersion}</p>
             <p>Electron + Google Sheets • Arquitectura Hexagonal</p>
           </div>
         </div>
 
       </div>
     `;
+
+    Settings.setupUpdateListener();
   },
 
   getIva() {
@@ -94,5 +112,72 @@ const Settings = {
     if (!confirm('¿Cerrar sesión? Deberás autenticarte de nuevo.')) return;
     await API.auth.logout();
     API.close();
+  },
+
+  async checkForUpdates() {
+    const btn = document.getElementById('btn-check-update');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Buscando...'; }
+    const status = document.getElementById('update-status');
+    if (status) status.innerHTML = '<p style="color:var(--color-text-muted)">Consultando servidor...</p>';
+    await API.updater.check();
+  },
+
+  setupUpdateListener() {
+    if (Settings._listenerActive) return;
+    Settings._listenerActive = true;
+    API.updater.onStatus((data) => {
+      const status = document.getElementById('update-status');
+      const btn = document.getElementById('btn-check-update');
+      if (!status) return;
+
+      switch (data.status) {
+        case 'checking':
+          status.innerHTML = '<p style="color:var(--color-text-muted)">🔍 Buscando actualizaciones...</p>';
+          break;
+        case 'available':
+          status.innerHTML = `
+            <div style="background:var(--color-surface-2);border-radius:var(--radius-md);padding:var(--sp-3) var(--sp-4)">
+              <p style="color:var(--color-green);font-weight:700;margin-bottom:var(--sp-2)">🎉 ¡Nueva versión disponible! v${data.version}</p>
+              <button class="btn btn-success" onclick="Settings.downloadUpdate()">⬇️ Descargar actualización</button>
+            </div>`;
+          if (btn) { btn.disabled = false; btn.textContent = '🔍 Buscar actualizaciones'; }
+          break;
+        case 'up-to-date':
+          status.innerHTML = '<p style="color:var(--color-green)">✅ Estás usando la versión más reciente.</p>';
+          if (btn) { btn.disabled = false; btn.textContent = '🔍 Buscar actualizaciones'; }
+          break;
+        case 'downloading':
+          status.innerHTML = `
+            <div style="margin-bottom:var(--sp-2)">
+              <p style="margin-bottom:var(--sp-2)">⬇️ Descargando... ${data.percent}%</p>
+              <div style="background:var(--color-surface-2);border-radius:var(--radius-full);height:8px;overflow:hidden">
+                <div style="background:var(--color-accent);height:100%;width:${data.percent}%;transition:width 0.3s"></div>
+              </div>
+            </div>`;
+          break;
+        case 'downloaded':
+          status.innerHTML = `
+            <div style="background:var(--color-surface-2);border-radius:var(--radius-md);padding:var(--sp-3) var(--sp-4)">
+              <p style="color:var(--color-green);font-weight:700;margin-bottom:var(--sp-2)">✅ Actualización v${data.version} lista</p>
+              <button class="btn btn-success" onclick="Settings.installUpdate()">🔄 Instalar y reiniciar</button>
+            </div>`;
+          if (btn) { btn.disabled = false; btn.textContent = '🔍 Buscar actualizaciones'; }
+          break;
+        case 'error':
+          status.innerHTML = `<p style="color:var(--color-red)">❌ Error: ${data.message}</p>`;
+          if (btn) { btn.disabled = false; btn.textContent = '🔍 Buscar actualizaciones'; }
+          break;
+      }
+    });
+  },
+
+  async downloadUpdate() {
+    const status = document.getElementById('update-status');
+    if (status) status.innerHTML = '<p style="color:var(--color-text-muted)">⬇️ Iniciando descarga...</p>';
+    await API.updater.download();
+  },
+
+  installUpdate() {
+    API.updater.install();
   }
 };
