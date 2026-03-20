@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sistema de Inventario — Autenticación</title>
+  <link rel="stylesheet" href="../styles/global.css"/>
+  <style>
+    body { display: flex; align-items: center; justify-content: center; height: 100vh; background: var(--color-bg); }
+    .auth-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-xl);
+      padding: 2.5rem;
+      width: 420px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--sp-5);
+      text-align: center;
+    }
+    .auth-logo { font-size: 3rem; margin-bottom: var(--sp-2); }
+    .auth-title { font-size: var(--fs-2xl); font-weight: var(--fw-700); }
+    .auth-subtitle { color: var(--color-text-muted); font-size: var(--fs-sm); }
+    .auth-step {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-4);
+      width: 100%;
+      display: none;
+      flex-direction: column;
+      gap: var(--sp-3);
+      text-align: left;
+    }
+    .auth-step.active { display: flex; }
+    .step-label { font-size: var(--fs-xs); font-weight: var(--fw-600); text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-accent); }
+    .auth-hint { font-size: var(--fs-xs); color: var(--color-text-muted); line-height: 1.6; }
+    .file-drop {
+      border: 2px dashed var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--sp-4);
+      text-align: center;
+      cursor: pointer;
+      transition: border-color var(--duration);
+      font-size: var(--fs-sm);
+      color: var(--color-text-muted);
+    }
+    .file-drop:hover, .file-drop.dragover { border-color: var(--color-accent); color: var(--color-accent); }
+    .spreadsheet-hint { font-size: var(--fs-xs); color: var(--color-text-muted); }
+    #error-msg { color: var(--color-red); font-size: var(--fs-xs); display: none; }
+    .progress-steps { display: flex; gap: var(--sp-2); justify-content: center; width: 100%; }
+    .prog-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-border); transition: background var(--duration); }
+    .prog-dot.done { background: var(--color-accent); }
+    .window-drag { -webkit-app-region: drag; position: fixed; top: 0; left: 0; right: 0; height: 30px; }
+  </style>
+</head>
+<body>
+<div class="window-drag"></div>
+<div class="auth-card">
+  <div class="auth-logo">📦</div>
+  <div>
+    <h1 class="auth-title">Sistema de Inventario</h1>
+    <p class="auth-subtitle">Conecta tu cuenta de Google para comenzar</p>
+  </div>
+
+  <div class="progress-steps">
+    <div class="prog-dot" id="dot-0"></div>
+    <div class="prog-dot" id="dot-1"></div>
+    <div class="prog-dot" id="dot-2"></div>
+  </div>
+
+  <!-- Step 1: Upload credentials.json -->
+  <div class="auth-step active" id="step-0">
+    <span class="step-label">Paso 1 — Credenciales Google</span>
+    <p class="auth-hint">
+      Descarga el archivo <strong>credentials.json</strong> desde Google Cloud Console
+      (OAuth 2.0 &gt; Aplicación de escritorio, con Google Sheets API habilitada) y súbelo aquí.
+    </p>
+    <div class="file-drop" id="creds-drop" onclick="document.getElementById('creds-file').click()">
+      📄 Haz clic o arrastra aquí credentials.json
+    </div>
+    <input type="file" id="creds-file" accept=".json" style="display:none"/>
+    <div id="error-msg">❌ <span id="error-text"></span></div>
+    <button class="btn btn-primary w-full" id="btn-step0" disabled>Continuar →</button>
+  </div>
+
+  <!-- Step 2: Google Auth -->
+  <div class="auth-step" id="step-1">
+    <span class="step-label">Paso 2 — Iniciar sesión con Google</span>
+    <p class="auth-hint">Se abrirá tu navegador para autorizar el acceso a Google Sheets. Sigue el proceso y vuelve aquí.</p>
+    <button class="btn btn-primary w-full" id="btn-google-auth">
+      🔐 Iniciar sesión con Google
+    </button>
+    <div id="auth-status" style="display:none; text-align:center; color: var(--color-green); font-size: var(--fs-sm);">✅ Sesión autorizada</div>
+  </div>
+
+  <!-- Step 3: Spreadsheet ID -->
+  <div class="auth-step" id="step-2">
+    <span class="step-label">Paso 3 — Google Spreadsheet</span>
+    <p class="auth-hint">
+      Crea una Google Spreadsheet en blanco y pega aquí su ID. Lo encuentras en la URL:<br/>
+      <code style="color:var(--color-accent)">docs.google.com/spreadsheets/d/<strong>[ID]</strong>/edit</code>
+    </p>
+    <input type="text" id="spreadsheet-id" class="form-input w-full" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"/>
+    <button class="btn btn-success w-full" id="btn-finish">✅ Comenzar a usar el Sistema</button>
+  </div>
+</div>
+
+<script>
+  let step = 0;
+  let credentialsLoaded = false;
+  let authenticated = false;
+
+  const dots = [document.getElementById('dot-0'), document.getElementById('dot-1'), document.getElementById('dot-2')];
+  const steps = [document.getElementById('step-0'), document.getElementById('step-1'), document.getElementById('step-2')];
+
+  function goToStep(n) {
+    steps.forEach((s, i) => {
+      s.classList.toggle('active', i === n);
+      dots[i].classList.toggle('done', i <= n);
+    });
+    step = n;
+  }
+
+  // File handling
+  const credsFile = document.getElementById('creds-file');
+  const credsDrop = document.getElementById('creds-drop');
+  const btnStep0 = document.getElementById('btn-step0');
+  const errorMsg = document.getElementById('error-msg');
+  const errorText = document.getElementById('error-text');
+
+  credsDrop.addEventListener('dragover', e => { e.preventDefault(); credsDrop.classList.add('dragover'); });
+  credsDrop.addEventListener('dragleave', () => credsDrop.classList.remove('dragover'));
+  credsDrop.addEventListener('drop', e => {
+    e.preventDefault(); credsDrop.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) handleCredsFile(file);
+  });
+  credsFile.addEventListener('change', () => { if (credsFile.files[0]) handleCredsFile(credsFile.files[0]); });
+
+  async function handleCredsFile(file) {
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      if (!json.installed && !json.web) throw new Error('El archivo no parece ser credentials.json válido.');
+      const res = await window.electronAPI.auth.loadCredentials(json);
+      if (!res.ok) throw new Error(res.error);
+      credentialsLoaded = true;
+      credsDrop.textContent = '✅ ' + file.name + ' cargado correctamente';
+      credsDrop.style.borderColor = 'var(--color-green)';
+      btnStep0.disabled = false;
+      errorMsg.style.display = 'none';
+    } catch (e) {
+      errorText.textContent = e.message;
+      errorMsg.style.display = 'block';
+    }
+  }
+
+  btnStep0.addEventListener('click', () => credentialsLoaded && goToStep(1));
+
+  document.getElementById('btn-google-auth').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-google-auth');
+    btn.disabled = true;
+    btn.textContent = '⏳ Esperando autorización...';
+    const res = await window.electronAPI.auth.authenticate();
+    if (res.ok) {
+      authenticated = true;
+      document.getElementById('auth-status').style.display = 'block';
+      btn.textContent = '✅ Autorizado';
+      setTimeout(() => goToStep(2), 800);
+    } else {
+      btn.disabled = false;
+      btn.textContent = '🔐 Intentar de nuevo';
+      alert('Error: ' + res.error);
+    }
+  });
+
+  document.getElementById('btn-finish').addEventListener('click', async () => {
+    const id = document.getElementById('spreadsheet-id').value.trim();
+    if (!id) { alert('Por favor ingresa el ID de la Spreadsheet.'); return; }
+    const btn = document.getElementById('btn-finish');
+    btn.disabled = true;
+    btn.textContent = '⏳ Configurando...';
+    const res = await window.electronAPI.auth.setSpreadsheet(id);
+    if (res.ok) {
+      window.electronAPI.auth.success();
+    } else {
+      btn.disabled = false;
+      btn.textContent = '✅ Comenzar a usar el Sistema';
+      alert('Error: ' + res.error);
+    }
+  });
+</script>
+</body>
+</html>

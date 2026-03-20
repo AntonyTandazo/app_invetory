@@ -1,0 +1,57 @@
+{
+  "name": "inventory-system",
+  "version": "1.0.0",
+  "description": "Sistema de inventario empresarial con Electron y Google Sheets",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --win"
+  },
+  "keywords": [],
+  "author": "Inventario",
+  "license": "ISC",
+  "dependencies": {
+    "chart.js": "^4.4.2",
+    "google-auth-library": "^9.6.3",
+    "googleapis": "^134.0.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.1"
+  },
+  "devDependencies": {
+    "electron": "^29.1.0",
+    "electron-builder": "^23.6.0"
+  },
+  "build": {
+    "appId": "com.inventory.system",
+    "productName": "Sistema de Inventario",
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "credentials.json",
+        "to": "credentials.json"
+      },
+      {
+        "from": "config.json",
+        "to": "config.json"
+      }
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "IconoInventory.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Sistema de Inventario"
+    }
+  }
+}
