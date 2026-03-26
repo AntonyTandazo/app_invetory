@@ -46,8 +46,7 @@
     "publish": {
       "provider": "github",
       "owner": "AntonyTandazo",
-      "repo": "app_invetory",
-      "private": true
+      "repo": "app_invetory"
     },
     "win": {
       "target": "nsis",

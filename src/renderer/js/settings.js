@@ -79,7 +79,6 @@ const Settings = {
           <div class="table-header"><span class="table-title">ℹ️ Acerca del Sistema</span></div>
           <div style="padding:var(--sp-5)">
             <p style="margin-bottom:var(--sp-2)"><strong>Sistema de Inventario</strong> v${appVersion}</p>
-            <p>Electron + Google Sheets • Arquitectura Hexagonal</p>
           </div>
         </div>
 

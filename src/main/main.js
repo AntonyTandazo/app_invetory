@@ -122,14 +122,13 @@ app.whenReady().then(async () => {
     autoUpdater.setFeedURL({
         provider: 'github',
         owner: 'AntonyTandazo',
-        repo: 'app_invetory',
-        private: true,
-        token: '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'
+        repo: 'app_invetory'
     });
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
 
     const sendUpdateStatus = (status, data = {}) => {
+        console.log('[updater]', status, data);
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('updater:status', { status, ...data });
         }
@@ -140,15 +139,18 @@ app.whenReady().then(async () => {
     autoUpdater.on('update-not-available', () => sendUpdateStatus('up-to-date'));
     autoUpdater.on('download-progress', (prog) => sendUpdateStatus('downloading', { percent: Math.round(prog.percent) }));
     autoUpdater.on('update-downloaded', (info) => sendUpdateStatus('downloaded', { version: info.version }));
-    autoUpdater.on('error', (err) => sendUpdateStatus('error', { message: err?.message || 'Error desconocido' }));
+    autoUpdater.on('error', (err) => {
+        console.error('[updater] Error:', err);
+        sendUpdateStatus('error', { message: err?.message || 'Error desconocido' });
+    });
 
     ipcMain.handle('update:check', async () => {
-        try { await autoUpdater.checkForUpdates(); return { ok: true }; }
-        catch (e) { return { ok: false, error: e.message }; }
+        try { const r = await autoUpdater.checkForUpdates(); console.log('[updater] check result:', r?.updateInfo?.version); return { ok: true }; }
+        catch (e) { console.error('[updater] check error:', e); return { ok: false, error: e.message }; }
     });
     ipcMain.handle('update:download', async () => {
-        try { await autoUpdater.downloadUpdate(); return { ok: true }; }
-        catch (e) { return { ok: false, error: e.message }; }
+        try { console.log('[updater] Starting download...'); await autoUpdater.downloadUpdate(); return { ok: true }; }
+        catch (e) { console.error('[updater] download error:', e); sendUpdateStatus('error', { message: e.message }); return { ok: false, error: e.message }; }
     });
     ipcMain.handle('update:install', () => {
         autoUpdater.quitAndInstall(false, true);
