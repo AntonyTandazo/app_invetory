@@ -66,7 +66,7 @@ const Settings = {
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-4)">
               <div>
                 <p style="margin-bottom:var(--sp-1)"><strong>Versión actual:</strong> v${appVersion}</p>
-                <p style="font-size:var(--fs-sm);color:var(--color-text-muted)">Busca actualizaciones del sistema desde GitHub.</p>
+                <p style="font-size:var(--fs-sm);color:var(--color-text-muted)">Buscar actualizaciones.</p>
               </div>
             </div>
             <div id="update-status" style="margin-bottom:var(--sp-3)"></div>

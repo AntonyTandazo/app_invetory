@@ -73,8 +73,8 @@ const Sales = {
                   <span style="font-size:var(--fs-sm)">IVA (<span id="cart-iva-pct">15</span>%)</span>
                 </label>
                 <div style="display:flex;align-items:center;gap:4px;flex:1">
-                  <span style="font-size:var(--fs-sm);white-space:nowrap">Dto $</span>
-                  <input type="number" id="cart-dto-all" class="form-input" value="0" min="0" step="0.5"
+                  <span style="font-size:var(--fs-sm);white-space:nowrap">Dto %</span>
+                  <input type="number" id="cart-dto-all" class="form-input" value="0" min="0" max="100" step="1"
                          style="width:60px;padding:4px 6px;font-size:var(--fs-sm)"/>
                   <button class="btn btn-ghost btn-sm" onclick="Sales.applyDtoAll()" title="Aplicar a todos">✓</button>
                 </div>
@@ -128,8 +128,8 @@ const Sales = {
                   <span style="font-size:var(--fs-sm)">IVA (<span id="pf-iva-pct">15</span>%)</span>
                 </label>
                 <div style="display:flex;align-items:center;gap:4px;flex:1">
-                  <span style="font-size:var(--fs-sm);white-space:nowrap">Dto $</span>
-                  <input type="number" id="pf-dto-all" class="form-input" value="0" min="0" step="0.5"
+                  <span style="font-size:var(--fs-sm);white-space:nowrap">Dto %</span>
+                  <input type="number" id="pf-dto-all" class="form-input" value="0" min="0" max="100" step="1"
                          style="width:60px;padding:4px 6px;font-size:var(--fs-sm)"/>
                   <button class="btn btn-ghost btn-sm" onclick="Sales.applyPfDtoAll()" title="Aplicar a todos">✓</button>
                 </div>
@@ -330,32 +330,32 @@ const Sales = {
           <button class="qty-btn" onclick="Sales.changeQty(${idx}, 1)">+</button>
         </div>
         <div style="display:flex;align-items:center;gap:2px">
-          <span style="font-size:var(--fs-xs);color:var(--color-text-muted)">-$</span>
-          <input type="number" class="qty-input" value="${item.descuento || 0}" min="0" step="0.5"
-                 style="width:50px" onchange="Sales.setItemDto(${idx}, this.value)"/>
+          <input type="number" class="qty-input" value="${item.descuento || 0}" min="0" max="100" step="1"
+                 style="width:45px" onchange="Sales.setItemDto(${idx}, this.value)"/>
+          <span style="font-size:var(--fs-xs);color:var(--color-text-muted)">%</span>
         </div>
-        <div class="cart-item-price">${fmt((item.precio - (item.descuento || 0)) * item.cantidad)}</div>
+        <div class="cart-item-price">${fmt(item.precio * (1 - (item.descuento || 0) / 100) * item.cantidad)}</div>
         <button class="btn btn-ghost btn-sm" onclick="Sales.removeFromCart(${idx})">✕</button>
       </div>`).join('');
     this.recalcCart();
   },
 
   setItemDto(idx, val) {
-    const v = Math.max(0, parseFloat(val) || 0);
-    this.cart[idx].descuento = Math.min(v, this.cart[idx].precio); // can't exceed price
+    const v = Math.min(100, Math.max(0, parseFloat(val) || 0));
+    this.cart[idx].descuento = v;
     this.renderCart();
   },
 
   applyDtoAll() {
-    const v = Math.max(0, parseFloat(document.getElementById('cart-dto-all')?.value) || 0);
-    this.cart.forEach(i => { i.descuento = Math.min(v, i.precio); });
+    const v = Math.min(100, Math.max(0, parseFloat(document.getElementById('cart-dto-all')?.value) || 0));
+    this.cart.forEach(i => { i.descuento = v; });
     this.renderCart();
-    Toast.show(`Descuento de $${v.toFixed(2)} aplicado a todos`, 'success');
+    Toast.show(`Descuento de ${v}% aplicado a todos`, 'success');
   },
 
   recalcCart() {
-    const totalDtos = this.cart.reduce((s, i) => s + (i.descuento || 0) * i.cantidad, 0);
-    const subtotal = this.cart.reduce((s, i) => s + (i.precio - (i.descuento || 0)) * i.cantidad, 0);
+    const totalDtos = this.cart.reduce((s, i) => s + i.precio * (i.descuento || 0) / 100 * i.cantidad, 0);
+    const subtotal = this.cart.reduce((s, i) => s + i.precio * (1 - (i.descuento || 0) / 100) * i.cantidad, 0);
     const ivaPct = Settings.getIva();
     const ivaChecked = document.getElementById('cart-iva-check')?.checked || false;
     const ivaMonto = ivaChecked ? subtotal * ivaPct / 100 : 0;
@@ -446,11 +446,11 @@ const Sales = {
           <button class="qty-btn" onclick="Sales.changePfQty(${idx}, 1)">+</button>
         </div>
         <div style="display:flex;align-items:center;gap:2px">
-          <span style="font-size:var(--fs-xs);color:var(--color-text-muted)">-$</span>
-          <input type="number" class="qty-input" value="${item.descuento || 0}" min="0" step="0.5"
-                 style="width:50px" onchange="Sales.setPfItemDto(${idx}, this.value)"/>
+          <input type="number" class="qty-input" value="${item.descuento || 0}" min="0" max="100" step="1"
+                 style="width:45px" onchange="Sales.setPfItemDto(${idx}, this.value)"/>
+          <span style="font-size:var(--fs-xs);color:var(--color-text-muted)">%</span>
         </div>
-        <div class="cart-item-price">${fmt((item.precio - (item.descuento || 0)) * item.cantidad)}</div>
+        <div class="cart-item-price">${fmt(item.precio * (1 - (item.descuento || 0) / 100) * item.cantidad)}</div>
         <button class="btn btn-ghost btn-sm" onclick="Sales.removePfItem(${idx})">✕</button>
       </div>`).join('');
     this.recalcProforma();
@@ -480,16 +480,16 @@ const Sales = {
   },
   removePfItem(idx) { this.proformaCart.splice(idx, 1); this.renderProformaCart(); },
   setPfItemDto(idx, val) {
-    const v = Math.max(0, parseFloat(val) || 0);
-    this.proformaCart[idx].descuento = Math.min(v, this.proformaCart[idx].precio);
+    const v = Math.min(100, Math.max(0, parseFloat(val) || 0));
+    this.proformaCart[idx].descuento = v;
     this.renderProformaCart();
   },
 
   applyPfDtoAll() {
-    const v = Math.max(0, parseFloat(document.getElementById('pf-dto-all')?.value) || 0);
-    this.proformaCart.forEach(i => { i.descuento = Math.min(v, i.precio); });
+    const v = Math.min(100, Math.max(0, parseFloat(document.getElementById('pf-dto-all')?.value) || 0));
+    this.proformaCart.forEach(i => { i.descuento = v; });
     this.renderProformaCart();
-    Toast.show(`Descuento de $${v.toFixed(2)} aplicado a todos`, 'success');
+    Toast.show(`Descuento de ${v}% aplicado a todos`, 'success');
   },
 
   clearProforma() {
@@ -507,8 +507,8 @@ const Sales = {
   },
 
   recalcProforma() {
-    const totalDtos = this.proformaCart.reduce((s, i) => s + (i.descuento || 0) * i.cantidad, 0);
-    const subtotal = this.proformaCart.reduce((s, i) => s + (i.precio - (i.descuento || 0)) * i.cantidad, 0);
+    const totalDtos = this.proformaCart.reduce((s, i) => s + i.precio * (i.descuento || 0) / 100 * i.cantidad, 0);
+    const subtotal = this.proformaCart.reduce((s, i) => s + i.precio * (1 - (i.descuento || 0) / 100) * i.cantidad, 0);
     const ivaPct = Settings.getIva();
     const ivaChecked = document.getElementById('pf-iva-check')?.checked || false;
     const ivaMonto = ivaChecked ? subtotal * ivaPct / 100 : 0;
@@ -578,8 +578,8 @@ const Sales = {
   openCheckout() {
     if (this.cart.length === 0) { Toast.show('El carrito está vacío', 'warning'); return; }
     if (!this.selectedClient) { Toast.show('⚠️ Debes seleccionar un cliente antes de cobrar', 'warning'); return; }
-    const dtoMonto = this.cart.reduce((s, i) => s + (i.descuento || 0) * i.cantidad, 0);
-    const subtotal = this.cart.reduce((s, i) => s + (i.precio - (i.descuento || 0)) * i.cantidad, 0);
+    const dtoMonto = this.cart.reduce((s, i) => s + i.precio * (i.descuento || 0) / 100 * i.cantidad, 0);
+    const subtotal = this.cart.reduce((s, i) => s + i.precio * (1 - (i.descuento || 0) / 100) * i.cantidad, 0);
     const ivaPct = Settings.getIva();
     const ivaChecked = document.getElementById('cart-iva-check')?.checked || false;
     const ivaMonto = ivaChecked ? subtotal * ivaPct / 100 : 0;
@@ -983,7 +983,7 @@ const Sales = {
       doc.text('CANT.', 8, y + 1);
       doc.text('DESCRIPCIÓN', 22, y + 1);
       doc.text('P.UNIT', W - 52, y + 1, { align: 'right' });
-      doc.text('DTO', W - 32, y + 1, { align: 'right' });
+      doc.text('DTO %', W - 32, y + 1, { align: 'right' });
       doc.text('SUBTOTAL', W - 8, y + 1, { align: 'right' });
       y += 8;
 
@@ -993,13 +993,13 @@ const Sales = {
         doc.setFontSize(7.5);
         const qty = item.cantidad || 1;
         const pUnit = Number(item.precio) || 0;
-        const dto = Number(item.descuento) || 0;
-        const sub = (pUnit - dto) * qty;
+        const dtoPct = Number(item.descuento) || 0;
+        const sub = pUnit * (1 - dtoPct / 100) * qty;
         const nm = doc.splitTextToSize(item.nombre || '', W - 80)[0];
         doc.text(String(qty), 8, y);
         doc.text(nm, 22, y);
         doc.text(fmt(pUnit), W - 52, y, { align: 'right' });
-        doc.text(fmt(dto), W - 32, y, { align: 'right' });
+        doc.text(dtoPct > 0 ? dtoPct + '%' : '0', W - 32, y, { align: 'right' });
         doc.text(fmt(sub), W - 8, y, { align: 'right' });
         y += 6.5;
       });
@@ -1018,12 +1018,12 @@ const Sales = {
       y += 6;
     };
 
-    // Subtotal: compute from items with per-item discounts
+    // Subtotal: compute from items with per-item percentage discounts
     const subtotal = (s.items && s.items.length > 0)
-      ? s.items.reduce((sum, item) => sum + (Number(item.precio) - (Number(item.descuento) || 0)) * (item.cantidad || 1), 0)
+      ? s.items.reduce((sum, item) => sum + Number(item.precio) * (1 - (Number(item.descuento) || 0) / 100) * (item.cantidad || 1), 0)
       : (s.subtotal || s.total || 0);
     const totalDtos = (s.items && s.items.length > 0)
-      ? s.items.reduce((sum, item) => sum + (Number(item.descuento) || 0) * (item.cantidad || 1), 0)
+      ? s.items.reduce((sum, item) => sum + Number(item.precio) * (Number(item.descuento) || 0) / 100 * (item.cantidad || 1), 0)
       : (s.descuento_monto || 0);
     trow('Subtotal:', fmt(subtotal));
     if (totalDtos > 0) {
@@ -1080,8 +1080,8 @@ const Sales = {
 
     const ivaPct = Settings.getIva();
     const ivaChecked = document.getElementById('pf-iva-check')?.checked || false;
-    const totalDtos = this.proformaCart.reduce((s, i) => s + (i.descuento || 0) * i.cantidad, 0);
-    const subtotal = this.proformaCart.reduce((s, i) => s + (i.precio - (i.descuento || 0)) * i.cantidad, 0);
+    const totalDtos = this.proformaCart.reduce((s, i) => s + i.precio * (i.descuento || 0) / 100 * i.cantidad, 0);
+    const subtotal = this.proformaCart.reduce((s, i) => s + i.precio * (1 - (i.descuento || 0) / 100) * i.cantidad, 0);
     const ivaMonto = ivaChecked ? subtotal * ivaPct / 100 : 0;
     const total = subtotal + ivaMonto;
 
@@ -1114,7 +1114,7 @@ const Sales = {
     doc.text('CANT.', 8, y + 1);
     doc.text('DESCRIPCIÓN', 22, y + 1);
     doc.text('P.UNIT', W - 52, y + 1, { align: 'right' });
-    doc.text('DTO', W - 32, y + 1, { align: 'right' });
+    doc.text('DTO %', W - 32, y + 1, { align: 'right' });
     doc.text('SUBTOTAL', W - 8, y + 1, { align: 'right' });
     y += 9;
 
@@ -1124,13 +1124,13 @@ const Sales = {
       doc.setFontSize(7.5);
       const qty = item.cantidad || 1;
       const pUnit = Number(item.precio) || 0;
-      const dto = Number(item.descuento) || 0;
-      const sub = (pUnit - dto) * qty;
+      const dtoPct = Number(item.descuento) || 0;
+      const sub = pUnit * (1 - dtoPct / 100) * qty;
       const nm = doc.splitTextToSize(item.nombre || '', W - 80)[0];
       doc.text(String(qty), 8, y);
       doc.text(nm, 22, y);
       doc.text(fmt(pUnit), W - 52, y, { align: 'right' });
-      doc.text(fmt(dto), W - 32, y, { align: 'right' });
+      doc.text(dtoPct > 0 ? dtoPct + '%' : '0', W - 32, y, { align: 'right' });
       doc.text(fmt(sub), W - 8, y, { align: 'right' });
       y += 6.5;
     });
