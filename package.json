@@ -1,6 +1,6 @@
 {
   "name": "inventory-system",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Sistema de inventario empresarial con Electron y Google Sheets",
   "main": "src/main/main.js",
   "scripts": {
